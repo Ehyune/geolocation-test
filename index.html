@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>내 위치 마커 표시 - Naver Maps</title>
+    
+    <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=ft86q8n3df"></script>
+
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        
+        button {
+            padding: 12px 20px;
+            background-color: #03C75A;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background-color: #029f48; }
+
+        #status { margin: 15px 0; font-weight: bold; color: #555; }
+        
+        /* 지도 스타일: 반드시 높이(height)를 지정해야 합니다 */
+        #map {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            display: none; /* 위치 수신 전에는 숨김 */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📍 현재 위치 지도 마커 예제</h1>
+        <button onclick="startTracking()">내 위치 확인하기</button>
+        <div id="status">버튼을 누르면 위치 추적을 시작합니다.</div>
+        
+        <div id="map"></div>
+    </div>
+
+    <script>
+        // 전역 변수로 map과 marker 선언 (추후 제어를 위해)
+        let map = null;
+        let marker = null;
+
+        function startTracking() {
+            const statusDiv = document.getElementById('status');
+            const mapDiv = document.getElementById('map');
+
+            if (!navigator.geolocation) {
+                statusDiv.innerHTML = "이 브라우저는 위치 정보를 지원하지 않습니다.";
+                return;
+            }
+
+            statusDiv.innerHTML = "위치 정보를 가져오는 중...";
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    // 1. 좌표 추출
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    statusDiv.innerHTML = `위치 확인 완료: 위도 ${lat.toFixed(5)}, 경도 ${lng.toFixed(5)}`;
+                    
+                    // 2. 지도 영역 표시
+                    mapDiv.style.display = 'block';
+
+                    // 3. 네이버 지도 및 마커 초기화 함수 호출
+                    initNaverMap(lat, lng);
+                },
+                (error) => {
+                    statusDiv.innerHTML = `위치 확인 실패: ${error.message}`;
+                    console.error("Geolocation Error:", error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+
+        // 네이버 지도 초기화 및 마커 생성 로직 (공식 문서 기준)
+        function initNaverMap(lat, lng) {
+            // 네이버 API 로드 확인
+            if (typeof naver === 'undefined') {
+                alert("네이버 지도 API가 로드되지 않았습니다. Client ID와 URL 설정을 확인하세요.");
+                return;
+            }
+
+            // 지도 중심 좌표 객체 생성
+            const position = new naver.maps.LatLng(lat, lng);
+
+            // 1. 지도 생성 (기존 맵이 없으면 생성, 있으면 중심 이동)
+            if (!map) {
+                map = new naver.maps.Map('map', {
+                    center: position,
+                    zoom: 16, // 줌 레벨 (1~21)
+                    minZoom: 10,
+                    zoomControl: true,
+                    zoomControlOptions: {
+                        position: naver.maps.Position.TOP_RIGHT
+                    }
+                });
+            } else {
+                map.setCenter(position); // 이미 지도가 있다면 중심만 이동
+            }
+
+            // 2. 마커 생성
+            if (!marker) {
+                marker = new naver.maps.Marker({
+                    position: position,
+                    map: map,
+                    title: "현재 내 위치",
+                    // 마커 애니메이션 (선택사항)
+                    animation: naver.maps.Animation.DROP 
+                });
+            } else {
+                marker.setPosition(position); // 기존 마커 위치 이동
+            }
+
+            // 3. (옵션) 정보창 띄우기
+            const contentString = [
+                '<div style="padding:10px;min-width:150px;line-height:150%;">',
+                '<h4 style="margin-top:5px;">내 위치</h4>',
+                '<p>여기 계시군요!</p>',
+                '</div>'
+            ].join('');
+
+            const infoWindow = new naver.maps.InfoWindow({
+                content: contentString,
+                borderWidth: 1,
+                anchorSkew: true
+            });
+
+            infoWindow.open(map, marker);
+        }
+    </script>
+</body>
+</html>
